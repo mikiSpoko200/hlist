@@ -1,12 +1,38 @@
 pub mod hlist;
-
-use hlist::*;
+pub mod common;
 
 pub fn main() {
     println!("Hello world!");
 }
 
 use std::marker::PhantomData;
+
+use hlist::indexed;
+
+
+pub struct Entry<const INDEX: usize, U>(PhantomData<U>);
+
+#[derive(Default)]
+pub struct Registry<US = (), INDS = ()> {
+    uniforms: US,
+    indices: INDS
+}
+
+impl<US> Registry<US, ()> {
+    pub fn add<const INDEX: usize, U>(self, value: U) -> Registry<(US, U), ()> {
+        let Self { uniforms, indices } = self;
+        Registry {
+            uniforms: (uniforms, value), 
+            indices
+        }
+    }
+}
+
+impl<US: , INDS: LHList> Registry<US, INDS> {
+    pub fn get<const INDEX: usize>(&self) {
+        self.uniforms.get
+    }
+}
 
 
 pub fn hlist() -> HList {
@@ -24,8 +50,6 @@ pub fn hlist() -> HList {
 
 pub struct Shader<US>(PhantomData<US>);
 
-
-
 pub struct Builder<UUS, IUS>(UnInitUniforms<UUS>, InitUniforms<IUS>);
 
 type HList = (
@@ -39,38 +63,22 @@ type HList = (
     ),
 );
 
-
-pub struct Entry<const INDEX: usize, U>(PhantomData<U>);
-
-#[derive(Default)]
-pub struct Registry<US = (), INDS = ()>(US, INDS);
-
-impl<US> Registry<US, ()> {
-    pub fn add<const INDEX: usize, U>(self, value: U) -> Registry<(US, U), ()> {
-        let Registry(us, inds) = self;
-        Registry((us, value), inds)
-    }
-}
-
-impl<US, INDS> Registry<US, INDS> {
-    pub fn get<const INDEX: usize>() { }
-}
-
 pub struct UnInitUniforms<US>(US);
 pub struct InitUniforms<US>(US);
+
 impl Builder<(), ()> {
     pub fn new() -> Self {
-        Self((), ())
+        Self(UnInitUniforms(()), InitUniforms(()))
     }
 }
 
-impl<US> Builder<PhantomData<US>, ()> {
-    // expand uninitialized list
-    // here US is right folded since it will undergo reversal in uniform assignment?
-    pub fn attach<NUS>(self, _shader: Shader<NUS>) -> Builder<(PhantomData<US>, PhantomData<NUS>), ()> {
-        Builder((self.0, PhantomData))
-    }
-}
+// impl<US> Builder<US, ()> {
+//     // expand uninitialized list
+//     // here US is right folded since it will undergo reversal in uniform assignment?
+//     pub fn attach<NUS>(self, _shader: Shader<NUS>) -> Builder<(PhantomData<US>, PhantomData<NUS>), ()> {
+//         Builder(UnInitUniforms(self.0), InitUniforms(PhantomData))
+//     }
+// }
 
 // impl<E, TL, TG> Builder<((PhantomData<E>, TL), PhantomData<TG>)> {
 //     pub fn uniform(value: E) -> ! { }
