@@ -1,5 +1,5 @@
-pub mod hlist;
 pub mod common;
+pub mod hlist;
 
 pub fn main() {
     println!("Hello world!");
@@ -7,7 +7,7 @@ pub fn main() {
 
 use std::marker::PhantomData;
 
-use hlist::indexed;
+use hlist::indexed::lhlist;
 
 
 pub struct Entry<const INDEX: usize, U>(PhantomData<U>);
@@ -28,9 +28,9 @@ impl<US> Registry<US, ()> {
     }
 }
 
-impl<US: , INDS: LHList> Registry<US, INDS> {
+impl<US: , INDS: lhlist::Base> Registry<US, INDS> {
     pub fn get<const INDEX: usize>(&self) {
-        self.uniforms.get
+        // self.uniforms.get()
     }
 }
 
@@ -71,15 +71,3 @@ impl Builder<(), ()> {
         Self(UnInitUniforms(()), InitUniforms(()))
     }
 }
-
-// impl<US> Builder<US, ()> {
-//     // expand uninitialized list
-//     // here US is right folded since it will undergo reversal in uniform assignment?
-//     pub fn attach<NUS>(self, _shader: Shader<NUS>) -> Builder<(PhantomData<US>, PhantomData<NUS>), ()> {
-//         Builder(UnInitUniforms(self.0), InitUniforms(PhantomData))
-//     }
-// }
-
-// impl<E, TL, TG> Builder<((PhantomData<E>, TL), PhantomData<TG>)> {
-//     pub fn uniform(value: E) -> ! { }
-// }

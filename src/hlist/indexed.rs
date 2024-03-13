@@ -1,8 +1,6 @@
 use super::lhlist as unordered_lhlist;
 use super::rhlist as unordered_rhlist;
 
-use crate::common::Disjoint;
-
 // TODO: Is Base bound sound?
 
 // --------==========[ Indexed HLists ]==========--------
@@ -72,11 +70,6 @@ pub mod lhlist {
             (self, Indexed::new(value))
         }
     }
-
-
-    // --------==========[ LHList ]==========--------
-
-    pub trait HList: Base + Append { }
 }
 
 pub mod rhlist {
@@ -132,10 +125,5 @@ pub mod rhlist {
             (Indexed::new(value), self)
         }
     }
-
-
-    // --------==========[ LHList ]==========--------
-
-    pub trait HList: Base + Append { }
 }
 

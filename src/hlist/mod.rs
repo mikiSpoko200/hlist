@@ -4,20 +4,21 @@ pub mod indexed;
 use crate::common::Disjoint;
 
 pub mod lhlist {
+    #[allow(unused)]
     use super::{counters, Disjoint, Left};
 
     
     // --------==========[ Base Traits ]==========--------
 
     /// Left folded HList
-    pub trait Base: Sized + Disjoint<Type = Left> {
+    pub trait Base: Sized {
         const LENGTH: usize;
         
         fn append<T>(self, t: T) -> (Self, T) {
             (self, t)
         }
     }
-    
+       
     impl Base for () {
         const LENGTH: usize = 0;
     }
@@ -43,26 +44,26 @@ pub mod lhlist {
     // --------==========[ Append ]==========--------
     
     /// Append for LHList.
-    pub trait Append<E>: Base {
-        type Appended: Base;
+    pub trait Append: Base {
+        type Appended<E>: Base;
     
-        fn append(self, elem: E) -> Self::Appended;
+        fn append<E>(self, elem: E) -> Self::Appended<E>;
     }
     
     /// Base case
-    impl<E> Append<E> for () {
-        type Appended = ((), E);
+    impl Append for () {
+        type Appended<E> = ((), E);
     
-        fn append(self, elem: E) -> Self::Appended {
+        fn append<E>(self, elem: E) -> Self::Appended<E> {
             ((), elem)
         }
     }
     
     /// Inductive step
-    impl<E, H: Append<E>, T> Append<E> for (H, T) {
-        type Appended = ((H, T), E);
+    impl<H: Append, T> Append for (H, T) {
+        type Appended<E> = ((H, T), E);
     
-        fn append(self, elem: E) -> Self::Appended {
+        fn append<E>(self, elem: E) -> Self::Appended<E> {
             (self, elem)
         }
     }
@@ -71,26 +72,26 @@ pub mod lhlist {
     // --------==========[ Prepend ]==========--------
     
     /// Preprended LHList with element.
-    pub trait Prepend<E>: Base {
-        type Preprended: Base;
+    pub trait Prepend: Base {
+        type Preprended<E>: Base;
     
-        fn prepend(self, elem: E) -> Self::Preprended;
+        fn prepend<E>(self, elem: E) -> Self::Preprended<E>;
     }
     
     /// Base case
-    impl<E> Prepend<E> for () {
-        type Preprended = ((), E);
+    impl Prepend for () {
+        type Preprended<E> = ((), E);
         
-        fn prepend(self, elem: E) -> Self::Preprended {
+        fn prepend<E>(self, elem: E) -> Self::Preprended<E> {
             (self, elem)
         }
     }
     
     /// Inductive step
-    impl<E, H: Prepend<E>, T> Prepend<E> for (H, T) {
-        type Preprended = (<H as Prepend<E>>::Preprended, T);
+    impl<H: Prepend, T> Prepend for (H, T) {
+        type Preprended<E> = (<H as Prepend>::Preprended<E>, T);
         
-        fn prepend(self, elem: E) -> Self::Preprended {
+        fn prepend<E>(self, elem: E) -> Self::Preprended<E> {
             let (head, tail) = self;
             (head.prepend(elem), tail)
         }
@@ -145,7 +146,7 @@ pub mod lhlist {
         fn last_mut(&mut self) -> &mut Self::Last;
     }
     
-    impl<H: Base, E, First> Last for (H, E) {
+    impl<H: Base, E> Last for (H, E) {
         type Last = E;
         
         fn last(&self) -> &Self::Last {
@@ -185,7 +186,7 @@ pub mod lhlist {
     
         fn invert(self) -> Self::Inverted {
             let (head, elem) = self;
-            head.invert().append(elem)
+            <H::Inverted as super::rhlist::Append<E>>::append(head.invert(), elem)
         }
     }
 
@@ -211,9 +212,9 @@ pub mod lhlist {
     /// Inductive step
     impl<H: Reverse, E> Reverse for (H, E)
     where
-        H::Reversed: Prepend<E>
+        H::Reversed: Prepend
     {
-        type Reversed = <H::Reversed as Prepend<E>>::Preprended;
+        type Reversed = <H::Reversed as Prepend>::Preprended<E>;
         
         fn reverse(self) -> Self::Reversed {
             let (head, elem) = self;
@@ -257,10 +258,6 @@ pub mod lhlist {
         }
     }
 
-
-    // --------==========[ LHList ]==========--------
-
-    pub trait HList: Base + Append + Prepend + First + Last + Invert + Reverse + Selector { }
 }
 
 pub mod rhlist {
@@ -439,13 +436,13 @@ pub mod rhlist {
     /// Inductive step
     impl<E, T: Invert> Invert for (E, T)
     where
-        T::Inverted: super::lhlist::Prepend<E>
+        T::Inverted: super::lhlist::Prepend
     {
-        type Inverted = <T::Inverted as super::lhlist::Prepend<E>>::Preprended;
+        type Inverted = <T::Inverted as super::lhlist::Prepend>::Preprended<E>;
 
         fn invert(self) -> Self::Inverted {
             let (elem, tail) = self;
-            tail.invert().prepend(elem)
+            <T::Inverted as super::lhlist::Prepend>::prepend(tail.invert(), elem)
         }
     }
 
@@ -517,11 +514,6 @@ pub mod rhlist {
             self.1.get_mut()
         }
     }
-
-
-    // --------==========[ LHList ]==========--------
-
-    pub trait HList: Base + Append + Prepend + First + Last + Invert + Reverse + Selector { }
 }
 
 
@@ -561,44 +553,45 @@ pub trait HList {
 }
 
 mod private {
+    #[allow(unused)]
     use super::*;
-    
+
     // This delegates to a private helper trait which we can specialize on in stable rust
-    impl<T: Disjoint + HListHelper<T::Discriminant>> HList for T {
-        type Prepended = T::Prepended;
-        type Appended = T::Appended;
+    // impl<T: Disjoint + HListHelper<T::Discriminant>> HList for T {
+    //     type Prepended = T::Prepended;
+    //     type Appended = T::Appended;
         
-        type Last = T::Last;
-        type First = T::First;
+    //     type Last = T::Last;
+    //     type First = T::First;
         
-        type Inverted = T::Inverted;
-        type Reversed = T::Reversed;
+    //     type Inverted = T::Inverted;
+    //     type Reversed = T::Reversed;
         
-        fn prepend<E>(self, value: E) -> Self::Prepended {
-            todo!()
-        }
+    //     fn prepend<E>(self, value: E) -> Self::Prepended {
+    //         todo!()
+    //     }
         
-        fn append<E>(self, value: E) -> Self::Appended {
-            todo!()
-        }
+    //     fn append<E>(self, value: E) -> Self::Appended {
+    //         todo!()
+    //     }
         
-        fn first(&self) -> Self::First {
-            todo!()
-        }
+    //     fn first(&self) -> Self::First {
+    //         todo!()
+    //     }
         
-        fn last(&self) -> Self::Last {
-            todo!()
-        }
+    //     fn last(&self) -> Self::Last {
+    //         todo!()
+    //     }
         
-        fn invert(&self) -> Self::Inverted {
-            todo!()
-        }
+    //     fn invert(&self) -> Self::Inverted {
+    //         todo!()
+    //     }
         
-        fn reverse(self) -> Self::Reversed {
-            todo!()
-        }
-        // TODO: Implement HList interface using HListHelper
-    }
+    //     fn reverse(self) -> Self::Reversed {
+    //         todo!()
+    //     }
+    //     // TODO: Implement HList interface using HListHelper
+    // }
     
     trait HListHelper<Type> {
         type Prepended;
@@ -609,6 +602,8 @@ mod private {
     
         type Inverted;
         type Reversed;
+
+        type Selected<N, I>;
     
         fn prepend<E>(self, value: E) -> Self::Prepended;
         fn append<E>(self, value: E) -> Self::Appended;
@@ -618,79 +613,105 @@ mod private {
     
         fn invert(&self) -> Self::Inverted;
         fn reverse(self) -> Self::Reversed;
-    }
-    
-    // blanket impl 1
-    impl<T: lhlist::HList> HListHelper<Left> for T {
-        type Prepended = T::Preprended;
-        type Appended = T::Appended;
 
-        type Last = T::Last;
-        type First = T::First;
-        
-        type Inverted = T::Inverted;
-        type Reversed = T::Reversed;
-        
-        fn prepend<E>(self, value: E) -> Self::Prepended {
-            todo!()
-        }
-        
-        fn append<E>(self, value: E) -> Self::Appended {
-            todo!()
-        }
-        
-        fn first(&self) -> Self::First {
-            todo!()
-        }
-        
-        fn last(&self) -> Self::Last {
-            todo!()
-        }
-        
-        fn invert(&self) -> Self::Inverted {
-            todo!()
-        }
-        
-        fn reverse(self) -> Self::Reversed {
-            todo!()
-        }
-        // TODO: Concrete impl for LHList
+        fn select<N, I>(&self) -> Self::Selected<N, I>;
     }
-    
-    // blanket impl 2
-    impl<T: rhlist::HList> HListHelper<Right> for T {
-        type Prepended = T::Preprended;
-        type Appended = T::Appended;
 
-        type Last = T::Last;
-        type First = T::First;
+    // // blanket impl 1
+    // impl<T, N, I> HListHelper<super::Left> for T
+    // where
+    //     T: lhlist::Base
+    //     + lhlist::Append
+    //     + lhlist::Prepend
+    //     + lhlist::First
+    //     + lhlist::Last
+    //     + lhlist::Invert
+    //     + lhlist::Reverse
+    //     + lhlist::Selector<N, I>,
+    // {
+    //     type Prepended<E> = T::Preprended<E>;
+    //     type Appended<E> = T::Appended<E>;
+
+    //     type Last = T::Last;
+    //     type First = T::First;
         
-        type Inverted = T::Inverted;
-        type Reversed = T::Reversed;
+    //     type Inverted = T::Inverted;
+    //     type Reversed = T::Reversed;
         
-        fn prepend<E>(self, value: E) -> Self::Prepended {
-            todo!()
-        }
+    //     fn prepend<E>(self, value: E) -> Self::Prepended {
+    //         todo!()
+    //     }
         
-        fn append<E>(self, value: E) -> Self::Appended {
-            todo!()
-        }
+    //     fn append<E>(self, value: E) -> Self::Appended {
+    //         todo!()
+    //     }
         
-        fn first(&self) -> Self::First {
-            todo!()
-        }
+    //     fn first(&self) -> Self::First {
+    //         todo!()
+    //     }
         
-        fn last(&self) -> Self::Last {
-            todo!()
-        }
+    //     fn last(&self) -> Self::Last {
+    //         todo!()
+    //     }
         
-        fn invert(&self) -> Self::Inverted {
-            todo!()
-        }
+    //     fn invert(&self) -> Self::Inverted {
+    //         todo!()
+    //     }
         
-        fn reverse(self) -> Self::Reversed {
-            todo!()
-        }
+    //     fn reverse(self) -> Self::Reversed {
+    //         todo!()
+    //     }
+
+    //     fn select(&self) -> Self::Selected<N, I> {
+    //         todo!()
+    //     }
+    //     // TODO: Concrete impl for LHList
+    // }
+    
+    // // blanket impl 2
+    // impl<T, N, I> HListHelper<Right> for T
+    // where
+    //     T: lhlist::Base
+    //     + lhlist::Append
+    //     + lhlist::Prepend
+    //     + lhlist::First
+    //     + lhlist::Last
+    //     + lhlist::Invert
+    //     + lhlist::Reverse
+    //     + lhlist::Selector<N, I>,
+    // {
+    //     type Prepended<E> = T::Preprended<E>;
+    //     type Appended<E> = T::Appended<E>;
+
+    //     type Last = T::Last;
+    //     type First = T::First;
+        
+    //     type Inverted = T::Inverted;
+    //     type Reversed = T::Reversed;
+        
+    //     fn prepend<E>(self, value: E) -> Self::Prepended {
+    //         todo!()
+    //     }
+        
+    //     fn append<E>(self, value: E) -> Self::Appended {
+    //         todo!()
+    //     }
+        
+    //     fn first(&self) -> Self::First {
+    //         todo!()
+    //     }
+        
+    //     fn last(&self) -> Self::Last {
+    //         todo!()
+    //     }
+        
+    //     fn invert(&self) -> Self::Inverted {
+    //         todo!()
+    //     }
+        
+    //     fn reverse(self) -> Self::Reversed {
+    //         todo!()
+    //     }
         // TODO: Concrete impl for RHList
-    }
+    // }
 }
