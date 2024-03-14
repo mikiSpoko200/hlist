@@ -1,9 +1,7 @@
-pub mod common;
-pub mod hlist;
 
 use std::marker::PhantomData;
 
-use hlist::indexed::lhlist;
+use crate::hlist::indexed::lhlist;
 
 
 pub struct Entry<const INDEX: usize, U>(PhantomData<U>);
