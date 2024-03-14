@@ -1,7 +1,8 @@
+#![allow(unused)]
 
 use std::marker::PhantomData;
 
-use crate::hlist::indexed::lhlist;
+use crate::indexed::lhlist;
 
 
 pub struct Entry<const INDEX: usize, U>(PhantomData<U>);
